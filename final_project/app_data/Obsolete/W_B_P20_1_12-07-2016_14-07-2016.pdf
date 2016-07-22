@@ -1,0 +1,9 @@
+import csv
+plist = []
+input_file = "C:\Users\AKANKSHA\Desktop\Yazaki\Project 2\Test\App_Data\projects.csv"
+with open(input_file, 'r') as file:
+	reader = csv.reader(file)
+	for row in reader:
+		plist.append(row[0])
+	file.close()
+print plist

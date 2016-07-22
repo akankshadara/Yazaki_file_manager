@@ -1,0 +1,845 @@
+import Tkinter as tk
+import tkMessageBox as tkmb
+import tkFileDialog
+import ttk
+from PIL import Image
+import calendar
+import datetime
+import os
+import sys
+import time
+import csv
+
+LARGE_FONT= ("Verdana", 12)
+# global variables
+user_database = {
+	"a" : "a",
+	"gen" : "5678",
+	"emp" : "abcd"
+}
+
+file_name = ''
+revision_date = ''
+receipt_date = ''
+
+#read csv for part name and project master
+def prepare_list(input_file):
+	plist = []
+	with open(input_file, 'r') as file:
+		reader = csv.reader(file)
+		for row in reader:
+			plist.append(row[0])
+		file.close()
+	return plist
+
+part_names_list = prepare_list('part_names.csv')
+projects_list = prepare_list('projects.csv')
+
+def write_to_csv(plist, input_file):
+	with open(input_file, 'wb') as file:
+		wr = csv.writer(file, delimiter = ',')
+		for i in plist:
+			wr.writerow([i])
+
+
+#####################################################CALENDAR#######################################################
+####################################################################################################################
+
+# final_date = "hh" 
+global_var = ""
+def print_value():
+	global global_var
+	print global_var
+
+class Data:
+    def __init__(self):
+        self.day_selected = 0
+        self.month_selected = 0
+        self.year_selected = 0
+        self.day_name = 0
+
+def win(parent, d):
+	cal = Calendar(parent, d)
+
+class Calendar_Frame:
+	def __init__(self, master):
+		win(master, Data())
+
+class Calendar(tk.Frame):
+    def __init__(self, parent, data):
+        tk.Frame.__init__(self,parent)
+        self.data = data
+        self.parent = parent
+        self.cal = calendar.TextCalendar(calendar.SUNDAY)
+        self.year = int(time.strftime('%Y'))   ## select system date and year here!!
+        self.month = int(time.strftime('%m'))      ## select system date and year here!!
+        self.wid = []
+        self.day_selected = int(time.strftime('%d'))## select system date and year here!!
+        self.month_selected = self.month
+        self.year_selected = self.year
+        self.day_name = ''
+        
+        self.setup(self.year, self.month)
+        
+    def clear(self):
+        for w in self.wid[:]:
+            w.grid_forget()
+            #w.destroy()
+            self.wid.remove(w)
+    
+    def go_prev(self):
+        if self.month > 1:
+            self.month -= 1
+        else:
+            self.month = 12
+            self.year -= 1
+        #self.selected = (self.month, self.year)
+        self.clear()
+        self.setup(self.year, self.month)
+
+    def go_next(self):
+        if self.month < 12:
+            self.month += 1
+        else:
+            self.month = 1
+            self.year += 1
+        
+        #self.selected = (self.month, self.year)
+        self.clear()
+        self.setup(self.year, self.month )
+        
+    def selection(self, day, name):
+        self.day_selected = day
+        self.month_selected = self.month
+        self.year_selected = self.year
+        self.day_name = name
+        
+        self.data.day_selected = day
+        self.data.month_selected = self.month
+        self.data.year_selected = self.year
+        self.data.day_name = name
+        
+        #self.selected = day
+        self.clear()
+        self.setup(self.year, self.month)
+        
+    def setup(self, y, m ):
+        global global_var
+        left = tk.Button(self.parent,width=3, text='<', command=lambda :self.go_prev())
+        self.wid.append(left)
+        left.grid(row=0, column=1)
+        
+        header = tk.Label(self.parent, height=2, text='{}   {}'.format(calendar.month_abbr[m], str(y)))
+        self.wid.append(header)
+        header.grid(row=0, column=2, columnspan=3)
+        
+        right = tk.Button(self.parent,width=3, text='>', command=lambda:self.go_next())
+        self.wid.append(right)
+        right.grid(row=0, column=5)
+        
+        days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        for num, name in enumerate(days):
+            t = tk.Label(self.parent, text=name[:3])
+            self.wid.append(t)
+            t.grid(row=1, column=num)
+        
+        for w, week in enumerate(self.cal.monthdayscalendar(y, m), 2):
+            for d, day in enumerate(week):
+                if day:
+                    #print(calendar.day_name[day])
+                    b = tk.Button(self.parent, width=3, text=day, command=lambda day=day:self.selection(day, calendar.day_name[(day-1) % 7]) )
+                    self.wid.append(b)
+                    b.grid(row=w, column=d)
+                    
+        sel = tk.Label(self.parent, height=2, text='{} {} {} {}'.format(
+            self.day_name, calendar.month_name[self.month_selected], self.day_selected, self.year_selected))
+        self.wid.append(sel)
+        sel.grid(row=8, column=0, columnspan=7)
+
+        ok = tk.Button(self.parent, width=10, text='OK',command=lambda:self.set_data(sel["text"], self.parent))#lambda:self.parent.destroy())#)
+        self.wid.append(ok)
+        ok.grid(row=9, column=2, columnspan=3, pady=10)
+
+        # return sel["text"]
+        
+    def set_data(self,text, frame):
+        # print text
+        global global_var
+        global_var = text ###############
+        frame.destroy()
+        # return text
+
+############################################# GUI CODE ###############################################################
+######################################################################################################################
+class Application(tk.Tk):
+
+    def __init__(self, *args, **kwargs):
+        
+        tk.Tk.__init__(self, *args, **kwargs)
+        container = tk.Frame(self)
+        self.title("Part Revision Manager: Yazaki")
+
+        container.pack(side="top", fill="both", expand = True)
+
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+
+        self.frames = {}
+
+        for F in (LoginPage, Admin_Page, PartMaster, UserMaster, PartNameMaster, ProjectMaster):
+            frame = F(container, self)
+            self.frames[F] = frame
+            frame.grid(row=0, column=0, sticky="nsew")
+        self.show_frame(LoginPage)
+
+    def show_frame(self, cont):
+
+        frame = self.frames[cont]
+        frame.update()
+        frame.tkraise()
+
+def onFrameConfigure(canvas):
+		canvas.configure(scrollregion=canvas.bbox("all"))
+		# '''Reset the scroll region to encompass the inner frame'''
+ 
+############################################# LOGIN PAGE ###############################################################
+########################################################################################################################
+  
+class LoginPage(tk.Frame):
+	
+	def about(self):
+		tkmb.showinfo("About", "Made by:\nAkanksha Dara\nDivakar Verma\nBITS Pilani")
+		# tk.Message(self, text = "Made by:\nAkanksha Dara\nDivakar Verma\nBITS Pilani")
+
+	def login_func(self, user, pw, controller):
+			global user_database
+			try:
+				if(pw.get() == user_database[user.get()]):
+					print "welcome"
+					controller.show_frame(Admin_Page)
+					user.set('')
+					pw.set('')
+					
+			# open the new (main) window from here
+			except:
+			 	tkmb.showerror("ERROR", "Invalid Credentials\nCheck Username/Password!")
+
+
+
+	def __init__(self, parent, controller):
+		tk.Frame.__init__(self,parent)
+		top = self.winfo_toplevel()
+		top.rowconfigure(0, weight = 1)
+		top.columnconfigure(0, weight = 1)
+		top = self.winfo_toplevel()
+		self.menuBar = tk.Menu(top)
+		top['menu'] = self.menuBar
+		self.subMenu1 = tk.Menu(self.menuBar)
+		self.subMenu2 = tk.Menu(self.menuBar)
+		self.subMenu3 = tk.Menu(self.menuBar)
+		
+		self.menuBar.add_cascade(label='File', menu=self.subMenu1)
+		self.subMenu1.add_command(label='About', command = self.about)
+		self.subMenu1.add_command(label = 'Exit', command=self.quit)
+		self.menuBar.add_cascade(label='Help', menu=self.subMenu2)
+		
+		label = tk.Label(self, text="Yazaki Part Revision Manager: Login to get access!", font=LARGE_FONT)
+		label.grid(row = 1, column = 1, pady= (50, 20), padx = 150, columnspan = 5)	
+		user_name = tk.StringVar() # defines the widget state as string
+		pword = tk.StringVar()
+		user_label = tk.Label(self, text = "Username:")
+		user_label.grid(row = 3, column = 1, padx = (100, 10), pady = 10, columnspan = 2)
+		user_form = tk.Entry(self,textvariable=user_name) # adds a textarea widget
+		user_form.grid(row = 3, column = 3, padx = 5, pady = 10, columnspan = 2)
+		pword_label = tk.Label(self, text = "Password:")
+		pword_label.grid(row = 4, column = 1, padx = (100, 10), pady = 10, columnspan = 2)
+		pword_form = tk.Entry(self,textvariable=pword, show = "*")
+		pword_form.grid(row = 4, column = 3, padx = 10, pady = 10, columnspan = 2)
+
+		self.loginButton = tk.Button(self, foreground = 'blue', border = 3, relief = "groove" , text = 'Login')
+		self.loginButton["command"] = lambda: self.login_func(user_name, pword, controller)
+		self.loginButton.grid(column = 3, row = 5, padx = (5, 100), pady = 30, ipadx = 25, ipady = 0, columnspan = 2)
+
+		self.exitButton = tk.Button(self, foreground = 'red', justify = tk.CENTER, border = 3, relief = "groove",text = 'Exit', command = self.quit)
+		self.exitButton.grid(column = 1, row = 5,  padx = (210,5), pady = 30, ipadx = 35, ipady = 0, columnspan = 2)
+
+		self.f = tk.Frame(self, bg = "red")
+		self.f.grid(row = 11, column = 2, columnspan = 3, pady = 0, padx = 10)
+		logo_canvas = tk.Canvas(self.f, width = 345, height = 75, bg= "yellow")
+		logo_canvas.grid(row = 11, column = 3, columnspan= 5, padx = 0, pady = 0)
+		logo_canvas.background = tk.PhotoImage(file=r'logo2.gif')
+		logo_canvas.create_image(175,30,image=logo_canvas.background)#,anchor='nw')
+
+
+############################################ ADMIN PAGE ##############################################################
+######################################################################################################################
+
+		
+class Admin_Page(tk.Frame):
+
+	
+	def __init__(self, parent, controller):
+		tk.Frame.__init__(self, parent)
+
+		self.gray_frame= tk.Frame(self, bg = "gray", width = 750, pady = 0, padx = 0, height = 15)
+		self.gray_frame.grid(row = 0, column = 0, columnspan = 18)
+		# admin_menu = tk.Menubutton(frame2, text = "Edit")
+		# admin_menu.grid(row = 0, column = 0, columnspan = 2)
+
+		
+		label = tk.Label(self, text="Welcome Admin!", font=("Verdana", 10), justify = "right")
+		label.grid(row = 1, column = 6, pady=0, padx=2)
+		self.modify = tk.StringVar()
+
+		self.button_frame = tk.LabelFrame(self, border = 2, text = "Admin Options")
+		self.button_frame.grid(column = 0, row = 1, padx = 20, pady = 5, rowspan = 2,ipadx = 3, ipady = 3, columnspan = 2)
+
+		# to modify an existing file/add new
+		self.partButton = tk.Button(self.button_frame, border = 2, text = 'Part Master', relief = "groove")
+		self.partButton["command"] = lambda: controller.show_frame(PartMaster)
+		self.partButton.grid(column = 0, row = 1, padx = 5, pady = 5, rowspan = 2,ipadx = 20, ipady = 3)
+		
+		# to edit users
+		self.userButton = tk.Button(self.button_frame, border = 2, text = 'User Master', relief = "groove")
+		self.userButton["command"] = lambda: controller.show_frame(UserMaster)
+		self.userButton.grid(column = 1, row = 1, padx = 5, pady = 5, rowspan = 2,ipadx = 20, ipady = 3)
+
+		# to modify part name database
+		self.part_name_master = tk.Button(self.button_frame, border = 2, text = 'Part Name Master', relief = "groove")
+		self.part_name_master["command"] = lambda: controller.show_frame(PartNameMaster)
+		self.part_name_master.grid(column = 2, row = 1, padx = 5, pady = 5, rowspan = 2,ipadx = 20, ipady = 3)
+		
+		# to modify project database
+		self.project_master = tk.Button(self.button_frame, border = 2, text = 'Project Master', relief = "groove")
+		self.project_master["command"] = lambda: controller.show_frame(ProjectMaster)
+		self.project_master.grid(column = 3, row = 1, padx = 5, pady = 5, rowspan = 2,ipadx = 20, ipady = 3)
+		
+		
+
+		# singing out
+		self.logoutButton = tk.Button(self, foreground = 'red', cursor = "hand2", border = 3, justify = "right", relief = "flat" , text = 'Sign Out', font =("Verdana", 10))
+		self.logoutButton["command"] = lambda: controller.show_frame(LoginPage)
+		self.logoutButton.grid(column = 6, row = 0, padx = 0, pady = 0, ipadx = 1, ipady = 0)
+
+		self.f = tk.Frame(self, bg = "red")
+		self.f.grid(row = 10, column = 1, columnspan = 5, pady = 50, padx = 10)
+		logo_canvas = tk.Canvas(self.f, width = 380, height = 100, bg= "yellow")
+		logo_canvas.grid(row = 10, column = 0, columnspan= 5, padx = 0, pady = 0)
+		logo_canvas.background = tk.PhotoImage(file=r'logo2.gif')
+		logo_canvas.create_image(170,50,image=logo_canvas.background)#,anchor='nw')
+
+
+
+############################################# PART MASTER ###############################################################
+#########################################################################################################################
+		
+
+class PartMaster(tk.Frame):
+
+	def text_on_canvas(self, pname):
+		x = pname.get()
+		self.pname_canvas.delete("all")
+		self.pname_canvas.create_text(10, 10, text = str(x), font = ('Pursia', 9,'bold'), justify = tk.LEFT, anchor = 'w')
+		
+	
+	def scroll(self, files):
+
+		i=1
+		pdf_name = tk.StringVar()
+		buttons = [] 
+
+		self.canvas = tk.Canvas(self.online_Frame, borderwidth=0, background="#ffffff", width = 250, height = 432)
+		self.frame = tk.Frame(self.canvas, background="#ffffff")
+		
+		self.vsb = tk.Scrollbar(self.online_Frame, orient="vertical", command=self.canvas.yview)
+		self.canvas.configure(yscrollcommand=self.vsb.set)
+		self.vsb.grid(row = 0 , column = 8, rowspan = 10, columnspan = 10, sticky = "nsew")
+
+		# self.canvas.xview_moveto(0)
+		self.hsb = tk.Scrollbar(self.online_Frame, orient="horizontal", command=self.canvas.xview)
+		self.canvas.configure(xscrollcommand=self.hsb.set)
+		self.hsb.grid(row = 10 , column = 1, rowspan = 1, columnspan = 30, sticky = "nsew")
+
+		self.canvas.grid(row = 0 , column = 6, rowspan = 10, columnspan =10, sticky = 'w')
+		self.canvas.create_window((5,15), window=self.frame, anchor="nw",  tags="self.frame")
+		self.frame.bind("<Configure>", lambda event, canvas=self.canvas: onFrameConfigure(self.canvas))
+		for f in files:
+			b = tk.Radiobutton(self.frame, text=f, variable = pdf_name, anchor='w', value = f, indicatoron=0, relief = "ridge", width= 50, justify = "left")
+			b.grid(row=i, padx = 2, ipadx = 10, ipady = 2, sticky = "w")
+			b['command'] = lambda: self.text_on_canvas(pdf_name)
+			buttons.append(b)
+			i+=1
+
+
+	def attach_file(self):
+		global file_name
+		print "attach"
+		file_name = tkFileDialog.askopenfilename(defaultextension = ".pdf", title = "Select PDF")
+
+	def toggle_modify(self):
+		modify = self.modify.get()
+
+		if (modify == '0'):
+			self.rev_num_form.config(state = "disabled") 
+			self.rev_dateButton.config(state = "disabled")
+		elif (modify == '1'):
+			self.rev_num_form.config(state = "normal")
+			self.rev_dateButton.config(state = "normal")
+
+	def call_calendar(self):
+		self.cal_window = tk.Toplevel(self.master)
+		self.app = Calendar_Frame(self.cal_window)
+
+	def cancel(self):
+		print "reset labels here"
+
+
+	def __init__(self, parent, controller):
+		tk.Frame.__init__(self, parent)
+		
+		# get value from radiobutton to modify/create new PDF
+		# declaring variables
+		self.gray_frame= tk.Frame(self, bg = "gray", width = 750,  height = 15)
+		self.gray_frame.grid(row = 0, column = 1, columnspan = 25, pady = 0, padx = 0)
+		# singing out
+		self.logoutButton = tk.Button(self, foreground = 'red', cursor = "hand2", border = 3, justify = "right", relief = "flat" , text = 'Sign Out', font =("Verdana", 10))
+		self.logoutButton["command"] = lambda: controller.show_frame(LoginPage)
+		self.logoutButton.grid(row = 0, column = 12, padx = 0, pady = 0, ipadx = 1, ipady = 0)
+
+		part_number = tk.StringVar() 
+		part_name = tk.StringVar() # defines the widget state as string
+		rev_number = tk.StringVar()
+		date = tk.IntVar()
+		month = tk.IntVar()
+		year = tk.IntVar()
+		project = tk.StringVar()
+
+		self.entry_frame = tk.LabelFrame(self, border = 2, text = "Part Revision")
+		self.entry_frame.grid(column = 1, row = 1, padx = (15,2), pady = 8, rowspan = 2,ipadx = 3, ipady = 3, columnspan = 7)
+
+		self.label1 = tk.Label(self.entry_frame, text="Enter details & upload PDF", font=LARGE_FONT)
+		self.label1.grid(row = 0, column = 1,pady=15, padx= 20)
+
+		self.part_label = tk.Label(self.entry_frame, text = "Part Number:", justify = "left")
+		self.part_label.grid(row = 3, column = 1, padx = 10, pady = 10)
+
+		self.part_form = tk.Entry(self.entry_frame,textvariable = part_number, width = 25) # adds a textarea widget
+		self.part_form.grid(row = 3, column = 2, padx = 20 ,pady = 10,columnspan = 4)
+
+
+		self.part_name_label = tk.Label(self.entry_frame, text = "Part Name:", justify = "left")
+		self.part_name_label.grid(row = 4, column = 1, padx = 10, pady = 10)
+
+		self.part_name_canvas = tk.Canvas(self.entry_frame, bg = "white", height = 18, width = 131)
+		self.part_name_canvas.grid(row = 4, column = 2, padx = 2, pady = 10,columnspan = 4)
+		
+		self.part_name_dropdown = tk.Menubutton(self.entry_frame, text = ">", cursor = "hand2", highlightcolor = "white") # adds a textarea widget
+		self.part_name_dropdown.grid(row = 4, column = 5, padx = 20, pady = 10, columnspan = 4)
+		
+		self.project_label = tk.Label(self.entry_frame, text = " Project:", justify = "left")
+		self.project_label.grid(row = 5, column = 1, padx = 10, pady = 10)
+
+		self.project_canvas = tk.Canvas(self.entry_frame, bg = "white", height = 18, width = 131)
+		self.project_canvas.grid(row = 5, column = 2, padx = 2, pady = 10,columnspan = 4)
+
+		self.project_dropdown = tk.Menubutton(self.entry_frame, text = ">", cursor = "hand2", highlightcolor = "white") # adds a textarea widget
+		self.project_dropdown.grid(row = 5, column = 5, padx = 20, pady = 10, columnspan = 4)
+
+		self.rev_num_label = tk.Label(self.entry_frame, text = "       Drawing Revision Number:", justify ="left")
+		self.rev_num_label.grid(row = 6, column = 1, ipadx = 5, padx = 10, pady = 10, columnspan = 2)
+
+		self.rev_num_form = tk.Entry(self.entry_frame,textvariable = rev_number)
+		self.rev_num_form.grid(row = 6, column = 2, padx = 5, pady = 10,columnspan = 4)
+		
+		self.rev_date_label = tk.Label(self.entry_frame, text = "Drawing Revision Date:", justify = "left")
+		self.rev_date_label.grid(row = 7, column = 1, padx = 5, pady = 10, columnspan = 2)
+
+		# self.rev_date_text = tk.Text(self.entry_frame, bg = "yellow", height = 1, width = 15)
+		# self.rev_date_text.grid(row = 7, column = 2, padx = 5, pady = 10,columnspan = 4)
+		self.rev_date_canvas = tk.Canvas(self.entry_frame, bg = "white", height = 18, width = 140)
+		self.rev_date_canvas.grid(row = 7, column = 2, padx = 5, pady = 10,columnspan = 4)
+
+
+		self.rev_dateButton = tk.Button(self.entry_frame, text = "Date",cursor = "hand2", command = lambda: self.call_calendar())
+		self.rev_dateButton.grid(row = 7, column = 5)
+
+		# make date widget over here!
+		self.date_label = tk.Label(self.entry_frame, text = "   Receipt Date:", justify = "left")
+		self.date_label.grid(row = 8, column = 1, padx = 10, pady = 10)
+
+		self.receipt_date_canvas = tk.Canvas(self.entry_frame, bg = "white", height = 18, width = 140)
+		self.receipt_date_canvas.grid(row = 8, column = 2, padx = 5, pady = 10,columnspan = 4)
+
+		self.receipt_dateButton = tk.Button(self.entry_frame, text = "Date", cursor = "hand2", command = lambda: self.call_calendar())
+		self.receipt_dateButton.grid(row = 8, column = 5)
+
+		self.project_name_label = tk.Label(self.entry_frame, text = 'Selected File:', justify = "left", anchor = 'w')
+		self.project_name_label.grid(row = 11, column = 1, padx = 10, pady = 0, ipadx = 5)
+
+		self.pname_canvas = tk.Canvas(self.entry_frame, bg = "white", height = 22, width = 300)
+		self.pname_canvas.grid(row = 12, column = 1, padx = 2, pady = (0,5),columnspan = 6)
+
+
+		self.button_frame = tk.LabelFrame(self.entry_frame, border = 2)
+		self.button_frame.grid(column = 0, row = 9, padx = 5, pady = 0, rowspan = 2,ipadx = 3, ipady = 3, columnspan = 7)
+
+		self.modify = tk.StringVar()
+		self.modify.set('1')
+		# to add a new file
+		self.newButton = tk.Radiobutton(self.button_frame, border = 2, text = 'Add', relief = "groove", variable=self.modify, value = 0, indicatoron = 0)
+		self.newButton["command"] = self.toggle_modify
+		self.newButton.grid(column = 1, row = 9 , padx = 6, pady = 3, rowspan = 2,ipadx = 38, ipady = 3)
+		# to modify an existing file
+		self.modifyButton = tk.Radiobutton(self.button_frame, border = 2, text = 'Modify', relief = "groove", variable=self.modify, value = 1, indicatoron = 0)
+		self.modifyButton["command"] = self.toggle_modify
+		self.modifyButton.grid(column = 2, row = 9, padx = 6, pady = 3, rowspan = 2,ipadx = 30, ipady = 3)
+
+		self.backButton = tk.Button(self.button_frame, border = 2, text = 'Back', relief = "groove")
+		self.backButton["command"] = lambda: controller.show_frame(Admin_Page)
+		self.backButton.grid(column = 3, row = 9, padx = 6, pady = 3, rowspan = 2,ipadx = 35, ipady = 3)
+
+		self.attachButton = tk.Button(self.button_frame, border = 2, text = 'Attach PDF', relief = "groove", foreground = 'blue')
+		self.attachButton["command"] = self.attach_file
+		self.attachButton.grid(column = 1, row = 11, padx = 6, pady = 3, rowspan = 2,ipadx = 20, ipady = 3)
+
+
+		self.saveButton = tk.Button(self.button_frame, border = 2, text = 'Save', relief = "groove", foreground = 'darkgreen')
+		# self.saveButton["command"] = self.file_upload
+		self.saveButton.grid(column = 2, row = 11, padx = 6, pady = 3, rowspan = 2,ipadx = 35, ipady = 3)
+
+		self.cancelButton = tk.Button(self.button_frame, border = 2, text = 'Cancel', relief = "groove", foreground = 'red')
+		self.cancelButton["command"] = self.cancel
+		self.cancelButton.grid(column = 3, row = 11, padx = 6, pady = 3, rowspan = 2,ipadx = 30, ipady = 3)
+
+
+		self.f = tk.Frame(self, bg = "red")
+		self.f.grid(row = 10, column = 12, columnspan = 2, pady = 3, padx = 0)
+		logo_canvas = tk.Canvas(self.f, width = 120, height = 35, bg= "yellow")
+		logo_canvas.grid(row = 10, column = 3, columnspan= 5, padx = 0, pady = 0)
+		logo_canvas.background = tk.PhotoImage(file=r'logo.gif')
+		logo_canvas.create_image(60, 18,image=logo_canvas.background)#,anchor='nw')
+
+		self.online_Frame = tk.LabelFrame(self, border = 2, text = "Browse Online",  width = 250, height = 450)
+		self.online_Frame.grid(row = 1, column = 8, padx = (4,7), pady = 25, columnspan = 6)
+
+		files=next(os.walk(r'C:\Users\AKANKSHA\Desktop\Yazaki\Project 2\Test Folders\Online'))[2]
+		self.scroll(files)
+
+
+############################################# USER MASTER ###############################################################
+#########################################################################################################################
+
+	
+class UserMaster(tk.Frame):
+
+	
+	def __init__(self, parent, controller):
+		tk.Frame.__init__(self, parent)
+		
+		# get value from radiobutton to modify/create new PDF
+		# declaring variables
+		self.gray_frame = tk.Frame(self, bg = "gray", width = 750, pady = 0, padx = 0, height = 15)
+		self.gray_frame.grid(row = 0, column = 0, columnspan = 7)
+		# admin_menu = tk.Menubutton(frame2, text = "Edit")
+		# admin_menu.grid(row = 0, column = 0, columnspan = 2)
+		
+		self.label = tk.Label(self, text="User Master", font=("Verdana", 10), justify = "right")
+		self.label.grid(row = 1, column = 6, pady=0, padx=2)
+
+		# singing out
+		self.logoutButton = tk.Button(self, foreground = 'red', cursor = "hand2", border = 3, justify = "right", relief = "flat" , text = 'Sign Out', font =("Verdana", 10))
+		self.logoutButton["command"] = lambda: controller.show_frame(LoginPage)
+		self.logoutButton.grid(column = 6, row = 0, padx = 0, pady = 0, ipadx = 1, ipady = 0)
+
+		self.cancelButton = tk.Button(self, border = 2, text = 'Cancel', relief = "groove", foreground = 'red')
+		self.cancelButton["command"] = lambda: controller.show_frame(Admin_Page)
+		self.cancelButton.grid(column = 2, row = 11, padx = 6, pady = 3, rowspan = 2,ipadx = 30, ipady = 3)
+
+		self.f = tk.Frame(self, bg = "red")
+		self.f.grid(row = 10, column = 6, columnspan = 1, pady = 0, padx = 0)
+		logo_canvas = tk.Canvas(self.f, width = 120, height = 35, bg= "yellow")
+		logo_canvas.grid(row = 10, column = 3, columnspan= 5, padx = 0, pady = 0)
+		logo_canvas.background = tk.PhotoImage(file=r'logo.gif')
+		logo_canvas.create_image(60, 18,image=logo_canvas.background)#,anchor='nw')
+
+
+############################################# GLOBAL FUNCTIONS ##########################################################
+#########################################################################################################################
+
+
+#############################################PART NAME MASTER###############################################################
+####################################################################################################################
+
+
+class PartNameMaster(tk.Frame):
+	
+	def text_on_canvas(self, pname):
+		x = pname.get()
+		self.pname_canvas.delete("all")
+		self.pname_canvas.create_text(10, 10, text = str(x), font = ('Pursia', 9,'bold'), justify = tk.LEFT, anchor = 'w')
+		
+
+	def scroll(self, plist):	
+
+			i=1
+			pname = tk.StringVar()
+			buttons = [] 
+
+			self.canvas = tk.Canvas(self.online_Frame, borderwidth=0, width = 120, height = 432)
+			self.frame = tk.Frame(self.canvas)
+			
+			self.vsb = tk.Scrollbar(self.online_Frame, orient="vertical", command=self.canvas.yview)
+			self.canvas.configure(yscrollcommand=self.vsb.set)
+			self.vsb.grid(row = 0 , column = 5, rowspan = 10, sticky = "nsew")
+
+			# self.canvas.xview_moveto(0)
+			self.hsb = tk.Scrollbar(self.online_Frame, orient="horizontal", command=self.canvas.xview)
+			self.canvas.configure(xscrollcommand=self.hsb.set)
+			self.hsb.grid(row = 9 , column = 0, rowspan = 1, sticky = "nsew", columnspan = 7)
+
+			self.canvas.grid(row = 0 , column = 0, rowspan = 10, sticky = 'w')
+			self.canvas.create_window((5,15), window=self.frame, anchor="nw",  tags="self.frame")
+			self.frame.bind("<Configure>", lambda event, canvas=self.canvas: onFrameConfigure(self.canvas))
+			
+			files = plist
+			for f in files:
+				b = tk.Radiobutton(self.frame, text=f, variable = pname, anchor='w', value = f, indicatoron=0, relief = "ridge", width= 25, justify = "left")
+				b['command'] = lambda: self.text_on_canvas(pname)
+				b.grid(row=i, padx = 2, ipadx = 10, ipady = 2, sticky = "w")
+				buttons.append(b)
+				i+=1
+
+
+	def modify(self):
+		print "modify here"
+
+	def delete(self):
+		print "delete here"
+		result = tkmb.askquestion('Delete', 'Are you sure?', icon = 'warning')
+
+	def add(self):
+		pname = self.part_name.get()
+		if (pname != '') and (pname not in part_names_list):
+			part_names_list.append(pname)
+			write_to_csv(part_names_list, 'part_names.csv')
+			self.scroll(part_names_list)
+			tkmb.showinfo('SUCCESS', 'New part name (' + pname + ') added to the database.')
+			
+			
+		elif (pname == ''):
+			tkmb.showerror('ERROR', 'Empty field!')
+		else:
+			tkmb.showerror('ERROR', 'Part name already exists!')
+
+	def __init__(self, parent, controller):
+		tk.Frame.__init__(self, parent)
+		
+		self.gray_frame= tk.Frame(self, bg = "gray", width = 750,  height = 15)
+		self.gray_frame.grid(row = 0, column = 1, columnspan = 25, pady = 0, padx = 0)
+		# singing out
+		self.logoutButton = tk.Button(self, foreground = 'red', cursor = "hand2", border = 3, justify = "right", relief = "flat" , text = 'Sign Out', font =("Verdana", 10))
+		self.logoutButton["command"] = lambda: controller.show_frame(LoginPage)
+		self.logoutButton.grid(row = 0, column = 12, padx = 0, pady = 0, ipadx = 1, ipady = 0)
+
+		self.label1 = tk.Label(self, text="Part Name Master", font=LARGE_FONT)
+		self.label1.grid(row = 0, column = 1,pady=15, padx= 20)
+
+		self.entry_frame = tk.LabelFrame(self, border = 2, text = 'Add new project')
+		self.entry_frame.grid(row = 1, column = 1, padx = (15,2), pady = 8, rowspan = 5,ipadx = 3, ipady = 3, columnspan = 7)
+
+		self.part_name_label = tk.Label(self.entry_frame, text = "Enter New Part Name:", justify = "left", anchor = 'w')
+		self.part_name_label.grid(row = 3, column = 1, padx = 10, pady = 10)
+
+		self.part_name = tk.StringVar()
+		self.part_form = tk.Entry(self.entry_frame, width = 25, textvariable = self.part_name) # adds a textarea widget
+		self.part_form.grid(row = 3, column = 2, padx = 20 ,pady = 10,columnspan = 4)
+
+		self.addButton = tk.Button(self.entry_frame, border = 2, text = 'Add Part Name', relief = "groove")
+		self.addButton["command"] = self.add
+		self.addButton.grid(column = 2, row = 4, padx = 6, pady = 3, columnspan = 2,ipadx = 15, ipady = 3)
+
+		self.modify_frame = tk.LabelFrame(self, border = 2, text = 'Modify/Delete Existing')
+		self.modify_frame.grid(row = 4, column = 1, padx = (30,2), pady = 8, rowspan = 5,ipadx = 3, ipady = 3, columnspan = 6)
+
+		self.project_name_label = tk.Label(self.modify_frame, text = 'Selected Project:', justify = "left", anchor = 'w')
+		self.project_name_label.grid(row = 3, column = 1, padx = 10, pady = 10, ipadx = 25)
+
+		self.pname_canvas = tk.Canvas(self.modify_frame, bg = "white", height = 18, width = 170)
+		self.pname_canvas.grid(row = 3, column = 2, padx = 2, pady = 10,columnspan = 4)
+
+		self.modifyButton = tk.Button(self.modify_frame, border = 2, text = 'Modify', relief = "groove")
+		self.modifyButton["command"] = self.modify
+		self.modifyButton.grid(column = 1, row = 4, padx = 6, pady = 3, columnspan = 2,ipadx = 15, ipady = 3)
+
+		self.deleteButton = tk.Button(self.modify_frame, border = 2, text = 'Delete', relief = "groove")
+		self.deleteButton["command"] = self.delete
+		self.deleteButton.grid(column = 2, row = 4, padx = 6, pady = 3, columnspan = 2,ipadx = 15, ipady = 3)
+
+		self.button_frame = tk.LabelFrame(self, border = 2)
+		self.button_frame.grid(column = 0, row = 6, padx = 5, pady = 25, rowspan = 5,ipadx = 3, ipady = 3, columnspan = 7)
+
+		self.backButton = tk.Button(self.button_frame, border = 2, text = 'Back', relief = "groove")
+		self.backButton["command"] = lambda: controller.show_frame(Admin_Page)
+		self.backButton.grid(column = 1, row = 11, padx = 5, pady = 1, rowspan = 2,ipadx = 35, ipady = 3)
+
+		self.cancelButton = tk.Button(self.button_frame, border = 2, text = 'Cancel', relief = "groove", foreground = 'red')
+		# self.cancelButton["command"] = self.cancel
+		self.cancelButton.grid(column = 3, row = 11, padx = 5, pady = 1, rowspan = 2,ipadx = 30, ipady = 3)
+
+		# self.f = tk.Frame(self, bg = "red")
+		# self.f.grid(row = 10, column = 12, columnspan = 2, pady = 3, padx = 0)
+		# logo_canvas = tk.Canvas(self.f, width = 120, height = 35, bg= "yellow")
+		# logo_canvas.grid(row = 10, column = 3, columnspan= 5, padx = 0, pady = 0)
+		# logo_canvas.background = tk.PhotoImage(file=r'logo.gif')
+		# logo_canvas.create_image(60, 18,image=logo_canvas.background)#,anchor='nw')
+
+		self.online_Frame = tk.LabelFrame(self, border = 2, text = "Browse Part Names",  width = 260, height = 450)
+		self.online_Frame.grid(row = 1, column = 8, padx = (4,7), pady = 25, columnspan = 6, rowspan = 10)
+
+		self.scroll(part_names_list)
+
+
+############################################# PROJECT MASTER #######################################################
+####################################################################################################################
+
+
+class ProjectMaster(tk.Frame):
+
+	def text_on_canvas(self, pname):
+		x = pname.get()
+		self.pname_canvas.delete("all")
+		self.pname_canvas.create_text(10, 10, text = str(x), font = ('Pursia', 9,'bold'), justify = tk.LEFT, anchor = 'w')
+		
+
+
+	def scroll(self, plist):	
+
+			i=1
+			pname = tk.StringVar()
+			buttons = [] 
+
+			self.canvas = tk.Canvas(self.online_Frame, borderwidth=0, width = 120, height = 432)
+			self.frame = tk.Frame(self.canvas)
+			
+			self.vsb = tk.Scrollbar(self.online_Frame, orient="vertical", command=self.canvas.yview)
+			self.canvas.configure(yscrollcommand=self.vsb.set)
+			self.vsb.grid(row = 0 , column = 5, rowspan = 10, sticky = "nsew")
+
+			# self.canvas.xview_moveto(0)
+			self.hsb = tk.Scrollbar(self.online_Frame, orient="horizontal", command=self.canvas.xview)
+			self.canvas.configure(xscrollcommand=self.hsb.set)
+			self.hsb.grid(row = 9 , column = 0, rowspan = 1, sticky = "nsew", columnspan = 7)
+
+			self.canvas.grid(row = 0 , column = 0, rowspan = 10, sticky = 'w')
+			self.canvas.create_window((5,15), window=self.frame, anchor="nw",  tags="self.frame")
+			self.frame.bind("<Configure>", lambda event, canvas=self.canvas: onFrameConfigure(self.canvas))
+			
+			files = plist
+			for f in files:
+				b = tk.Radiobutton(self.frame, text=f, variable = pname, anchor='w', value = f, indicatoron=0, relief = "ridge", width= 25, justify = "left")
+				b['command'] = lambda: self.text_on_canvas(pname)
+				b.grid(row=i, padx = 2, ipadx = 10, ipady = 2, sticky = "w")
+				buttons.append(b)
+				i+=1
+
+	
+	def add(self):
+		pname = self.project_name.get()
+		if (pname != '') and (pname not in projects_list):
+			projects_list.append(pname)
+			write_to_csv(projects_list, 'projects.csv')
+			scroll(self, projects_list)
+			tkmb.showinfo('SUCCESS', 'New project (' + pname + ') added to the database.')
+			
+		elif (pname == ''):
+			tkmb.showerror('ERROR', 'Empty field!')
+		else:
+			tkmb.showerror('ERROR', 'Project name already exists!')
+
+	def modify(self):
+		print "modify here"
+
+	def delete(self):
+		print "delete here"
+
+	def __init__(self, parent, controller):
+		tk.Frame.__init__(self, parent)
+		
+		self.gray_frame= tk.Frame(self, bg = "gray", width = 750,  height = 15)
+		self.gray_frame.grid(row = 0, column = 1, columnspan = 25, pady = 0, padx = 0)
+		# singing out
+		self.logoutButton = tk.Button(self, foreground = 'red', cursor = "hand2", border = 3, justify = "right", relief = "flat" , text = 'Sign Out', font =("Verdana", 10))
+		self.logoutButton["command"] = lambda: controller.show_frame(LoginPage)
+		self.logoutButton.grid(row = 0, column = 12, padx = 0, pady = 0, ipadx = 1, ipady = 0)
+
+		self.label1 = tk.Label(self, text="Project Master", font=LARGE_FONT)
+		self.label1.grid(row = 0, column = 1,pady=15, padx= 20)
+
+		self.add_frame = tk.LabelFrame(self, border = 2, text = 'Add new project')
+		self.add_frame.grid(row = 1, column = 1, padx = (15,2), pady = 8, rowspan = 5,ipadx = 3, ipady = 3, columnspan = 7)
+
+		self.project_name_label = tk.Label(self.add_frame, text = "Enter New Project Name:", justify = "left", anchor = 'w')
+		self.project_name_label.grid(row = 3, column = 1, padx = 10, pady = 10)
+
+		self.project_name = tk.StringVar()
+		self.project_form = tk.Entry(self.add_frame, width = 25, textvariable = self.project_name) # adds a textarea widget
+		self.project_form.grid(row = 3, column = 2, padx = 20 ,pady = 10,columnspan = 4)
+
+		self.addButton = tk.Button(self.add_frame, border = 2, text = 'Add Project', relief = "groove")
+		self.addButton["command"] = self.add
+		self.addButton.grid(column = 2, row = 4, padx = 6, pady = 3, columnspan = 2,ipadx = 15, ipady = 3)
+
+		self.modify_frame = tk.LabelFrame(self, border = 2, text = 'Modify/Delete Existing')
+		self.modify_frame.grid(row = 4, column = 1, padx = (30,2), pady = 8, rowspan = 5,ipadx = 3, ipady = 3, columnspan = 6)
+
+		self.project_name_label = tk.Label(self.modify_frame, text = 'Selected Project:', justify = "left", anchor = 'w')
+		self.project_name_label.grid(row = 3, column = 1, padx = 10, pady = 10, ipadx = 25)
+
+		self.pname_canvas = tk.Canvas(self.modify_frame, bg = "white", height = 18, width = 180)
+		self.pname_canvas.grid(row = 3, column = 2, padx = 2, pady = 10,columnspan = 4)
+
+		self.modifyButton = tk.Button(self.modify_frame, border = 2, text = 'Modify', relief = "groove")
+		self.modifyButton["command"] = self.modify
+		self.modifyButton.grid(column = 1, row = 4, padx = 6, pady = 3, columnspan = 2,ipadx = 15, ipady = 3)
+
+		self.deleteButton = tk.Button(self.modify_frame, border = 2, text = 'Delete', relief = "groove")
+		self.deleteButton["command"] = self.delete
+		self.deleteButton.grid(column = 2, row = 4, padx = 6, pady = 3, columnspan = 2,ipadx = 15, ipady = 3)
+		
+		
+		self.button_frame = tk.LabelFrame(self, border = 2)
+		self.button_frame.grid(column = 0, row = 6, padx = 5, pady = 25, rowspan = 5,ipadx = 3, ipady = 3, columnspan = 7)
+
+		self.backButton = tk.Button(self.button_frame, border = 2, text = 'Back', relief = "groove")
+		self.backButton["command"] = lambda: controller.show_frame(Admin_Page)
+		self.backButton.grid(column = 1, row = 11, padx = 6, pady = 3, rowspan = 2,ipadx = 35, ipady = 3)
+
+		self.cancelButton = tk.Button(self.button_frame, border = 2, text = 'Cancel', relief = "groove", foreground = 'red')
+		# self.cancelButton["command"] = self.cancel
+		self.cancelButton.grid(column = 3, row = 11, padx = 6, pady = 3, rowspan = 2,ipadx = 30, ipady = 3)
+
+		self.cancelButton = tk.Button(self.button_frame, border = 2, text = 'Cancel', relief = "groove", foreground = 'red')
+		# self.cancelButton["command"] = self.cancel
+		self.cancelButton.grid(column = 3, row = 11, padx = 6, pady = 3, rowspan = 2,ipadx = 30, ipady = 3)
+
+		# self.f = tk.Frame(self, bg = "red")
+		# self.f.grid(row = 10, column = 12, columnspan = 2, pady = 3, padx = 0)
+		# logo_canvas = tk.Canvas(self.f, width = 120, height = 35, bg= "yellow")
+		# logo_canvas.grid(row = 10, column = 3, columnspan= 5, padx = 0, pady = 0)
+		# logo_canvas.background = tk.PhotoImage(file=r'logo.gif')
+		# logo_canvas.create_image(60, 18,image=logo_canvas.background)#,anchor='nw')
+
+		self.online_Frame = tk.LabelFrame(self, border = 2, text = "Browse Projects", width = 350, height = 450)
+		self.online_Frame.grid(row = 1, column = 8, padx = (4,7), pady = 25, columnspan = 6, rowspan = 10, sticky = 'e')
+
+		self.scroll(projects_list)
+
+
+####################################################################################################################
+####################################################################################################################
+
+			
+app = Application()
+app.maxsize(760,600)
+app.maxsize(760,600)
+app.mainloop()

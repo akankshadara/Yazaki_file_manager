@@ -1,0 +1,10 @@
+user_name,category,hashed_pword
+a,admin,$5$rounds=535000$KH0pJdcTPg.iuplk$63SJBXuxGhL/x/dcaUxBq9Avu64TiMK8N0v9W1OmB10
+gen,admin,$5$rounds=535000$moze3boWCzak3UPm$MTC4o1A2SW55OxIBYckdnvFTMVZVaoOsGKRc1P.AFkC
+emp,admin,$5$rounds=535000$HhuAzrMzfuVdIy2P$TD/viLeoF2GqQ0VYQkV16IbxChJoMjE3REx1HVV/hmA
+panda,viewer,$5$rounds=535000$pHJ.9qvBih0T92Za$/vuOZktdIRYnu8zlLsyGzO.nZELuGaRD1ffrG8GX4G6
+b,viewer,$5$rounds=535000$qvDPaNYnSCUkdYc2$VFdX7UHZrwMvT9HGeyMzA.8GTZKJRnXAs0EIyFKCPV.
+q,admin,$5$rounds=535000$dZeVAtah.OeVA6/.$nv6FmbYfKmPo0ZWlAR3h4.kBBZNGxczQTkSEKN8LZC0
+w,admin,$5$rounds=535000$TNvnZr0Pb79eeVAO$rzFBQOqI9C8rc0beexFs.uRknBBKZ2jEw.oOjtiZiIB
+d,restricted,$5$rounds=535000$6DvQodGn74Z97IsK$PJg0kbNREFpktDv68UsXYmHG7wGr2LVhrlO.eX./cV5
+new,viewer,$5$rounds=535000$57HD9c/MZTsgPubu$3tYvJx4nW2wCN.A6ZWJf8RCxtVdN/Qe80BgHIs/9NpB

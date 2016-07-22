@@ -1,0 +1,8 @@
+import socket
+
+s = socket.socket()
+
+s.connect(("DV" , 12))
+print s.recv(1024)
+
+s.close
